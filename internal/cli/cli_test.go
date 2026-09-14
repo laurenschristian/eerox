@@ -270,6 +270,27 @@ func TestExportName(t *testing.T) {
 	}
 }
 
+func TestRenameBatch(t *testing.T) {
+	_, puts := setup(t)
+	f := filepath.Join(t.TempDir(), "names.txt")
+	_ = os.WriteFile(f, []byte("# comment\n10.0.0.5\tNAS | Office\nKids iPad=Kids iPad\nzzz\tNope\nbroken line\naa:bb\tNAS | Office\n"), 0o600)
+	out, err := run(t, "rename-batch", f, "--dry-run")
+	if err != nil || !strings.Contains(out, "nas -> NAS | Office") || !strings.Contains(out, "renamed 1, unchanged 2, skipped 2 (dry run)") {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	if len(*puts) != 0 {
+		t.Fatal("dry run wrote")
+	}
+	_ = os.WriteFile(f, []byte("b2\tKids iPad Mini\n"), 0o600)
+	out, err = run(t, "rename-batch", f)
+	if err != nil || !strings.Contains(out, "renamed 1, unchanged 0, skipped 0") || !strings.Contains((*puts)[0], `"nickname":"Kids iPad Mini"`) {
+		t.Fatalf("%v\n%s\n%v", err, out, *puts)
+	}
+	if _, err := run(t, "rename-batch", "/nonexistent"); err == nil {
+		t.Fatal("missing file")
+	}
+}
+
 func TestRawAndLogout(t *testing.T) {
 	setup(t)
 	out, err := run(t, "raw", "networks/9/eeros")

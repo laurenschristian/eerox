@@ -67,7 +67,7 @@ func Root() *cobra.Command {
 	root.AddCommand(
 		loginCmd(), logoutCmd(), accountCmd(), networksCmd(), networkCmd(), statusCmd(),
 		devicesCmd(), deviceCmd(), eerosCmd(), rebootCmd(), profilesCmd(), profileCmd(),
-		reservationsCmd(), forwardsCmd(), guestCmd(), speedtestCmd(), exportCmd(), rawCmd(), mcpCmd(),
+		reservationsCmd(), forwardsCmd(), guestCmd(), speedtestCmd(), exportCmd(), renameBatchCmd(), rawCmd(), mcpCmd(),
 	)
 	return root
 }
