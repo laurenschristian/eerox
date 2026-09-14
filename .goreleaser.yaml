@@ -50,9 +50,3 @@ homebrew_casks:
       bash: "completions/eerox.bash"
       zsh: "completions/_eerox"
       fish: "completions/eerox.fish"
-    hooks:
-      post:
-        install: |
-          if OS.mac? && Hardware::CPU.arm?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/eerox"]
-          end
