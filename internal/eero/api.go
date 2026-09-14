@@ -344,6 +344,19 @@ func (c *Client) UpdateGuestNetwork(ctx context.Context, id string, fields map[s
 	return c.do(ctx, "PUT", net(id)+"/guestnetwork", fields, nil)
 }
 
+// SetDNS replaces the network DNS mode and, for custom mode, the resolver IPs.
+// mode is "automatic" (use the ISP/eero resolvers) or "custom".
+func (c *Client) SetDNS(ctx context.Context, id, mode string, ips []string) error {
+	body := map[string]any{"mode": mode}
+	if mode == "custom" {
+		if ips == nil {
+			ips = []string{}
+		}
+		body["custom"] = map[string]any{"ips": ips}
+	}
+	return c.do(ctx, "PUT", net(id)+"/dns", body, nil)
+}
+
 // SpeedTest runs a speed test from the gateway. It blocks for the test duration (~30s).
 func (c *Client) SpeedTest(ctx context.Context, id string) (*SpeedTest, error) {
 	var s SpeedTest

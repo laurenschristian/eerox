@@ -6,7 +6,7 @@ GOSEC := github.com/securego/gosec/v2/cmd/gosec@v2.29.0
 # G204: token_cmd is run through sh by design (user-supplied command, like adgctl's password_cmd).
 GOSEC_EXCLUDE := G204
 
-.PHONY: build install test cover cover-html lint fmt sec vuln hooks tidy snapshot clean
+.PHONY: build install test cover cover-html lint fmt sec vuln hooks tidy docs docs-check completions snapshot clean
 
 # Point git at the tracked hooks in .githooks. Run once after cloning.
 hooks:
@@ -53,3 +53,19 @@ snapshot:
 
 clean:
 	rm -rf $(BIN) dist/ coverage.out
+
+# Regenerate man pages (man/) and per-command markdown (docs/cli/) from the cobra tree.
+docs:
+	go run ./tools/gendocs
+
+# Verify docs generation is deterministic (used by CI): regenerate twice, diff.
+docs-check:
+	go run ./tools/gendocs
+	cp -R docs/cli /tmp/eerox-docs-a && cp -R man /tmp/eerox-man-a
+	go run ./tools/gendocs
+	diff -r /tmp/eerox-docs-a docs/cli && diff -r /tmp/eerox-man-a man
+	rm -rf /tmp/eerox-docs-a /tmp/eerox-man-a
+	@echo "docs reproducible"
+
+completions:
+	sh scripts/completions.sh

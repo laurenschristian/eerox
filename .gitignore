@@ -1,3 +1,6 @@
 /eerox
 /dist/
 /coverage.out
+/man/
+/docs/cli/
+/completions/
