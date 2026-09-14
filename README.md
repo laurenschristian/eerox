@@ -1,5 +1,7 @@
 # eerox
 
+<img src="assets/icon.png" alt="eerox icon" width="96" align="right">
+
 [![CI](https://github.com/laurenschristian/eerox/actions/workflows/ci.yml/badge.svg)](https://github.com/laurenschristian/eerox/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/laurenschristian/eerox.svg)](https://pkg.go.dev/github.com/laurenschristian/eerox)
 [![Go Report Card](https://goreportcard.com/badge/github.com/laurenschristian/eerox)](https://goreportcard.com/report/github.com/laurenschristian/eerox)
