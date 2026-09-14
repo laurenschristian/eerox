@@ -89,5 +89,8 @@ jobs:
       - name: gitleaks
         run: |
           VER=8.30.1
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" | tar -xz gitleaks
+          for i in 1 2 3; do
+            curl -fsSL --retry 3 -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" && tar -xzf gitleaks.tgz gitleaks && break
+            echo "download attempt $i failed, retrying"; sleep 5
+          done
           ./gitleaks detect --no-banner --redact --source .
