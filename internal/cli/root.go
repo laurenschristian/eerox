@@ -51,7 +51,7 @@ func Root() *cobra.Command {
 			client.OnToken = cfg.SaveToken
 			for c := cmd; c != nil; c = c.Parent() {
 				switch c.Name() {
-				case "login", "logout", "help", "completion":
+				case "login", "logout", "help", "completion", "doctor":
 					return nil
 				}
 			}
@@ -66,7 +66,7 @@ func Root() *cobra.Command {
 
 	root.AddCommand(
 		loginCmd(), logoutCmd(), accountCmd(), networksCmd(), networkCmd(), statusCmd(),
-		devicesCmd(), deviceCmd(), eerosCmd(), rebootCmd(), profilesCmd(), profileCmd(),
+		devicesCmd(), deviceCmd(), eerosCmd(), rebootCmd(), profilesCmd(), profileCmd(), dnsCmd(), doctorCmd(),
 		reservationsCmd(), forwardsCmd(), guestCmd(), speedtestCmd(), exportCmd(), renameBatchCmd(), rawCmd(), mcpCmd(),
 	)
 	return root
@@ -111,6 +111,25 @@ func netID(ctx context.Context) (string, error) {
 	cfg.Network = a.Networks.Data[0].ID()
 	_ = config.Save(cfg)
 	return cfg.Network, nil
+}
+
+func cfgPath() string { return config.Path() }
+
+func sessionWhere() string {
+	if cfg.Token == "" {
+		return "not logged in"
+	}
+	if cfg.Keychain {
+		return "macOS Keychain (service eerox, account " + cfg.Login + ")"
+	}
+	return "config file"
+}
+
+func accountLine(a *eero.Account, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	return fmt.Sprintf("%s, %d network(s)", a.Email.Value, a.Networks.Count)
 }
 
 func loginCmd() *cobra.Command {

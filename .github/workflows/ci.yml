@@ -55,6 +55,8 @@ jobs:
           go-version-file: go.mod
           cache: true
       - run: make lint
+      - name: docs generate reproducibly
+        run: make docs-check
 
   # Heavier scans stay off PRs: main pushes and the weekly schedule only.
   vuln:

@@ -36,7 +36,7 @@ func setup(t *testing.T) (*httptest.Server, *[]string) {
 		case r.URL.Path == "/2.2/account":
 			ok(w, map[string]any{"name": "L", "networks": map[string]any{"count": 1, "data": []map[string]any{{"url": "/2.2/networks/9", "name": "Home"}}}})
 		case r.URL.Path == "/2.2/networks/9":
-			ok(w, map[string]any{"url": "/2.2/networks/9", "name": "Home", "wan_ip": "1.2.3.4", "health": map[string]any{"internet": map[string]any{"status": "connected", "isp_up": true}, "eero_network": map[string]any{"status": "connected"}}, "eeros": map[string]any{"count": 2}})
+			ok(w, map[string]any{"url": "/2.2/networks/9", "name": "Home", "wan_ip": "1.2.3.4", "health": map[string]any{"internet": map[string]any{"status": "connected", "isp_up": true}, "eero_network": map[string]any{"status": "connected"}}, "eeros": map[string]any{"count": 2}, "dns": map[string]any{"mode": "custom", "caching": true, "custom": map[string]any{"ips": []string{"10.0.4.70", "1.1.1.1"}}}})
 		case r.URL.Path == "/2.2/networks/9/devices":
 			ok(w, devices)
 		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodGet:
@@ -66,6 +66,10 @@ func setup(t *testing.T) (*httptest.Server, *[]string) {
 				puts = append(puts, "guest:"+string(b))
 			}
 			ok(w, map[string]any{"name": "Guests", "enabled": true, "password": "pw"})
+		case r.URL.Path == "/2.2/networks/9/dns" && r.Method == http.MethodPut:
+			b, _ := io.ReadAll(r.Body)
+			puts = append(puts, "dns:"+string(b))
+			ok(w, nil)
 		case r.URL.Path == "/2.2/networks/9/speedtest":
 			ok(w, map[string]any{"up": map[string]any{"value": 40, "units": "Mbps"}, "down": map[string]any{"value": 900, "units": "Mbps"}})
 		case r.URL.Path == "/2.2/eeros/e1/reboot":
@@ -224,6 +228,38 @@ func TestEerosProfilesReservationsForwardsGuestSpeed(t *testing.T) {
 		if !strings.Contains(joined, w) {
 			t.Fatalf("missing %s in\n%s", w, joined)
 		}
+	}
+}
+
+func TestDNSAndDoctor(t *testing.T) {
+	_, puts := setup(t)
+	out, err := run(t, "dns")
+	if err != nil || !strings.Contains(out, "resolvers  10.0.4.70, 1.1.1.1") || !strings.Contains(out, "single private resolver") {
+		t.Fatalf("dns show %v\n%s", err, out)
+	}
+	if _, err := run(t, "dns", "--set", "10.0.4.70"); err == nil {
+		t.Fatal("dns --set must require --yes")
+	}
+	out, err = run(t, "dns", "--set", "10.0.4.70", "--yes")
+	if err != nil || !strings.Contains(out, "dns updated") {
+		t.Fatalf("dns set %v\n%s", err, out)
+	}
+	if _, err := run(t, "dns", "--auto", "--yes"); err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(*puts, "\n")
+	if !strings.Contains(joined, `dns:{"custom":{"ips":["10.0.4.70"]},"mode":"custom"}`) || !strings.Contains(joined, `"mode":"automatic"`) {
+		t.Fatalf("dns puts:\n%s", joined)
+	}
+	out, err = run(t, "doctor")
+	if err != nil || !strings.Contains(out, "ok    api") || !strings.Contains(out, "ok    internet     connected") {
+		t.Fatalf("doctor %v\n%s", err, out)
+	}
+	t.Setenv("EERO_TOKEN", "")
+	t.Setenv("EEROX_CONFIG", filepath.Join(t.TempDir(), "empty.yaml"))
+	out, _ = run(t, "doctor")
+	if !strings.Contains(out, "run `eerox login") {
+		t.Fatalf("doctor logged out\n%s", out)
 	}
 }
 
