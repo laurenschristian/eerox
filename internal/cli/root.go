@@ -49,9 +49,11 @@ func Root() *cobra.Command {
 			}
 			client = eero.New(os.Getenv("EERO_BASE"), cfg.Token)
 			client.OnToken = cfg.SaveToken
-			switch cmd.Name() {
-			case "login", "logout", "help", "completion":
-				return nil
+			for c := cmd; c != nil; c = c.Parent() {
+				switch c.Name() {
+				case "login", "logout", "help", "completion":
+					return nil
+				}
 			}
 			if cfg.Token == "" {
 				return eero.ErrNotLoggedIn

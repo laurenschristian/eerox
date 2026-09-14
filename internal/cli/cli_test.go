@@ -271,6 +271,11 @@ func TestRawAndLogout(t *testing.T) {
 func TestNotLoggedIn(t *testing.T) {
 	setup(t)
 	t.Setenv("EERO_TOKEN", "")
+	for _, args := range [][]string{{"completion", "zsh"}, {"help"}, {"--help"}} {
+		if _, err := run(t, args...); err != nil {
+			t.Fatalf("%v must work logged out: %v", args, err)
+		}
+	}
 	if _, err := run(t, "devices"); err == nil || !strings.Contains(err.Error(), "not logged in") {
 		t.Fatalf("got %v", err)
 	}
