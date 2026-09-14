@@ -233,6 +233,24 @@ type Profile struct {
 
 func (p Profile) ID() string { return ID(p.URL) }
 
+// DeviceURLs returns the profile's current member device urls.
+func (p Profile) DeviceURLs() []string {
+	out := make([]string, 0, len(p.Devices))
+	for _, d := range p.Devices {
+		out = append(out, d.URL)
+	}
+	return out
+}
+
+// SetProfileDevices replaces the device list on a profile.
+func (c *Client) SetProfileDevices(ctx context.Context, id, prof string, urls []string) error {
+	devs := make([]map[string]string, 0, len(urls))
+	for _, u := range urls {
+		devs = append(devs, map[string]string{"url": u})
+	}
+	return c.UpdateProfile(ctx, id, prof, map[string]any{"devices": devs})
+}
+
 type Reservation struct {
 	URL         string `json:"url"`
 	IP          string `json:"ip"`
@@ -342,6 +360,11 @@ func (c *Client) GuestNetwork(ctx context.Context, id string) (*GuestNetwork, er
 
 func (c *Client) UpdateGuestNetwork(ctx context.Context, id string, fields map[string]any) error {
 	return c.do(ctx, "PUT", net(id)+"/guestnetwork", fields, nil)
+}
+
+// UpdateNetwork PUTs top-level network settings, e.g. {"sqm": true, "wpa3": true}.
+func (c *Client) UpdateNetwork(ctx context.Context, id string, fields map[string]any) error {
+	return c.do(ctx, "PUT", net(id), fields, nil)
 }
 
 // SetDNS replaces the network DNS mode and, for custom mode, the resolver IPs.

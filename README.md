@@ -97,8 +97,10 @@ eerox rename-batch names.txt         # bulk rename from a file (--dry-run)
 eerox eeros                          # mesh nodes and health
 eerox network                        # WAN, ISP, DHCP, DNS, firmware, last speed test
 eerox dns [--set 10.0.4.70 --yes]    # show or pin the network resolvers
+eerox set [--wpa3 on --sqm on --yes] # toggle WPA3, SQM, band steering, UPnP, IPv6
 eerox speedtest                      # run one from the gateway
 eerox profiles ; eerox profile pause Kids
+eerox profile assign Kids "Kids iPad"  # add/remove a device from a profile (unassign)
 eerox reservations [add <ip> <mac> [desc] | rm <id|ip|mac>]
 eerox forwards ; eerox guest [--on|--off|--password ... |--name ...]
 eerox reboot [<eero>] --yes          # one node, or the whole network
@@ -113,7 +115,7 @@ eerox mcp                            # MCP server over stdio
 claude mcp add eero -- eerox mcp
 ```
 
-Any stdio MCP client works: command `eerox`, args `["mcp"]`. It exposes 19 tools (`eero_status`-style reads plus device, profile, reservation, guest and reboot writes). Reboot asks the agent to confirm with you first.
+Any stdio MCP client works: command `eerox`, args `["mcp"]`. It exposes 21 tools (`eero_status`-style reads plus device, profile, reservation, guest and reboot writes). Reboot asks the agent to confirm with you first.
 
 ## Pairs with AdGuard Home
 
