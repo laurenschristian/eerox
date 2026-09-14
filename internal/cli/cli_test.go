@@ -251,6 +251,25 @@ func TestExport(t *testing.T) {
 	}
 }
 
+func TestExportName(t *testing.T) {
+	cases := []struct {
+		d    eero.Device
+		want string
+	}{
+		{eero.Device{Nickname: "Kids iPad", Hostname: "wlan0"}, "Kids iPad"},
+		{eero.Device{Hostname: "wlan0", Manufacturer: "Tuya Smart Inc.", MAC: "50:8a:06:65:bc:21"}, "Tuya bc21"},
+		{eero.Device{Hostname: "lwip0", MAC: "80:64:7c:ea:00:50"}, "Device 0050"},
+		{eero.Device{MAC: "aa:bb:cc:dd:ee:ff"}, "Device eeff"},
+		{eero.Device{Hostname: "Tuya Smart Inc.", Manufacturer: "Tuya Smart Inc.", MAC: "00:11"}, "Tuya 0011"},
+		{eero.Device{Hostname: "nas"}, "nas"},
+	}
+	for _, c := range cases {
+		if got := exportName(c.d); got != c.want {
+			t.Errorf("%+v: got %q want %q", c.d, got, c.want)
+		}
+	}
+}
+
 func TestRawAndLogout(t *testing.T) {
 	setup(t)
 	out, err := run(t, "raw", "networks/9/eeros")

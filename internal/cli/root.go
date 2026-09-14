@@ -815,6 +815,7 @@ func exportCmd() *cobra.Command {
 				return nil
 			default:
 				var out []ExportEntry
+				seen := map[string]int{}
 				for _, d := range devs {
 					if !all && !d.Connected {
 						continue
@@ -826,7 +827,12 @@ func exportCmd() *cobra.Command {
 					if d.MAC != "" {
 						ids = append(ids, d.MAC)
 					}
-					e := ExportEntry{Name: d.Name(), IDs: ids}
+					name := exportName(d)
+					seen[name]++
+					if seen[name] > 1 {
+						name = fmt.Sprintf("%s (%d)", name, seen[name])
+					}
+					e := ExportEntry{Name: name, IDs: ids}
 					if adguard && d.DeviceType != "" {
 						e.Tags = []string{adguardTag(d.DeviceType)}
 					}
@@ -840,6 +846,28 @@ func exportCmd() *cobra.Command {
 	c.Flags().BoolVar(&hosts, "hosts", false, "print ip<TAB>hostname lines")
 	c.Flags().BoolVar(&all, "all", false, "include offline devices")
 	return c
+}
+
+// exportName turns interface-style hostnames (wlan0, lwip0), bare MACs and vendor
+// placeholders into "Vendor a1b2" so AdGuard client names stay unique and readable.
+func exportName(d eero.Device) string {
+	n := d.Name()
+	generic := d.Nickname == "" && (strings.EqualFold(n, d.MAC) || strings.EqualFold(n, d.Manufacturer) ||
+		strings.HasPrefix(strings.ToLower(n), "wlan") || strings.HasPrefix(strings.ToLower(n), "lwip") ||
+		strings.HasPrefix(strings.ToLower(n), "eth") || n == "")
+	if !generic {
+		return n
+	}
+	vendor := strings.Fields(d.Manufacturer)
+	label := "Device"
+	if len(vendor) > 0 {
+		label = vendor[0]
+	}
+	mac := strings.ReplaceAll(d.MAC, ":", "")
+	if len(mac) > 4 {
+		mac = mac[len(mac)-4:]
+	}
+	return label + " " + mac
 }
 
 func hostname(name string) string {
