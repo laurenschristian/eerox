@@ -10,16 +10,16 @@ A fast, single-binary CLI and [MCP](https://modelcontextprotocol.io) server for 
 
 ```console
 $ eerox status
-James: internet connected, mesh connected, 5 eeros, 60/91 devices online, wan 146.86.147.119
+Home: internet connected, mesh connected, 3 eeros, 24/40 devices online, wan 203.0.113.10
 
 $ eerox devices --online
-ID            NAME                    IP           MAC                STATE   LINK      NODE        LAST SEEN
-9c3e5336bf95  Apple TV | Family Room  10.0.4.78    9c:3e:53:36:bf:95  online  wired     Tech Panel  1m
-a2777e98c989  MacBook | Ben           10.0.4.20    a2:77:7e:98:c9:89  online  5GHz 5/5  Office      1m
+ID            NAME            IP          MAC                STATE   LINK      NODE        LAST SEEN
+1a2b3c4d5e6f  Living Room TV  10.0.0.31   aa:bb:cc:00:00:31  online  wired     Downstairs  1m
+2b3c4d5e6f70  Alex Laptop     10.0.0.42   aa:bb:cc:00:00:42  online  5GHz 5/5  Office      1m
 ...
 
 $ eerox device pause "Kids iPad"
-ok: Kids iPad (b2)
+ok: Kids iPad (2b3c4d5e6f70)
 ```
 
 ## Why
@@ -65,7 +65,7 @@ eero has no API keys. Login mirrors the app: an identifier, then a one-time code
 ```console
 $ eerox login me@example.com
 verification code: 123456
-logged in as me@example.com, network 3510114, token in macOS Keychain (service eerox)
+logged in as me@example.com, network 12345678, token in macOS Keychain (service eerox)
 ```
 
 The session token is stored in the macOS Keychain (service `eerox`). With `--no-keychain`, or on Linux, it lives in the config file with mode 0600. Sessions refresh themselves; if eero invalidates one, any command tells you to `eerox login` again. Amazon-account logins are not supported by this flow; use the email or phone on the eero account.
@@ -96,7 +96,7 @@ eerox device rename <device> <name>  # pause | unpause | block | unblock
 eerox rename-batch names.txt         # bulk rename from a file (--dry-run)
 eerox eeros                          # mesh nodes and health
 eerox network                        # WAN, ISP, DHCP, DNS, firmware, last speed test
-eerox dns [--set 10.0.4.70 --yes]    # show or pin the network resolvers
+eerox dns [--set 10.0.0.2 --yes]     # show or pin the network resolvers
 eerox set [--wpa3 on --sqm on --yes] # toggle WPA3, SQM, band steering, UPnP, IPv6
 eerox speedtest                      # run one from the gateway
 eerox profiles ; eerox profile pause Kids
@@ -123,7 +123,7 @@ Any stdio MCP client works: command `eerox`, args `["mcp"]`. It exposes 21 tools
 eerox export --adguard | adgctl client import --update
 ```
 
-This names every AdGuard Home client from eero, so the DNS query log reads "Kids iPad" instead of `10.0.4.212`. See [adgctl](https://github.com/laurenschristian/adgctl).
+This names every AdGuard Home client from eero, so the DNS query log reads "Kids iPad" instead of `10.0.0.42`. See [adgctl](https://github.com/laurenschristian/adgctl).
 
 ## Development
 

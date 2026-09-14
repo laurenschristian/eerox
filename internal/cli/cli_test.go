@@ -42,7 +42,7 @@ func setup(t *testing.T) (*httptest.Server, *[]string) {
 			puts = append(puts, "netset:"+string(b))
 			ok(w, nil)
 		case r.URL.Path == "/2.2/networks/9":
-			ok(w, map[string]any{"url": "/2.2/networks/9", "name": "Home", "wan_ip": "1.2.3.4", "wpa3": netWpa3, "sqm": false, "band_steering": true, "upnp": false, "ipv6_upstream": false, "health": map[string]any{"internet": map[string]any{"status": "connected", "isp_up": true}, "eero_network": map[string]any{"status": "connected"}}, "eeros": map[string]any{"count": 2}, "dns": map[string]any{"mode": "custom", "caching": true, "custom": map[string]any{"ips": []string{"10.0.4.70", "1.1.1.1"}}}})
+			ok(w, map[string]any{"url": "/2.2/networks/9", "name": "Home", "wan_ip": "1.2.3.4", "wpa3": netWpa3, "sqm": false, "band_steering": true, "upnp": false, "ipv6_upstream": false, "health": map[string]any{"internet": map[string]any{"status": "connected", "isp_up": true}, "eero_network": map[string]any{"status": "connected"}}, "eeros": map[string]any{"count": 2}, "dns": map[string]any{"mode": "custom", "caching": true, "custom": map[string]any{"ips": []string{"10.0.0.2", "1.1.1.1"}}}})
 		case r.URL.Path == "/2.2/networks/9/devices":
 			ok(w, devices)
 		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodGet:
@@ -240,13 +240,13 @@ func TestEerosProfilesReservationsForwardsGuestSpeed(t *testing.T) {
 func TestDNSAndDoctor(t *testing.T) {
 	_, puts := setup(t)
 	out, err := run(t, "dns")
-	if err != nil || !strings.Contains(out, "resolvers  10.0.4.70, 1.1.1.1") || !strings.Contains(out, "single private resolver") {
+	if err != nil || !strings.Contains(out, "resolvers  10.0.0.2, 1.1.1.1") || !strings.Contains(out, "single private resolver") {
 		t.Fatalf("dns show %v\n%s", err, out)
 	}
-	if _, err := run(t, "dns", "--set", "10.0.4.70"); err == nil {
+	if _, err := run(t, "dns", "--set", "10.0.0.2"); err == nil {
 		t.Fatal("dns --set must require --yes")
 	}
-	out, err = run(t, "dns", "--set", "10.0.4.70", "--yes")
+	out, err = run(t, "dns", "--set", "10.0.0.2", "--yes")
 	if err != nil || !strings.Contains(out, "dns updated") {
 		t.Fatalf("dns set %v\n%s", err, out)
 	}
@@ -254,7 +254,7 @@ func TestDNSAndDoctor(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(*puts, "\n")
-	if !strings.Contains(joined, `dns:{"custom":{"ips":["10.0.4.70"]},"mode":"custom"}`) || !strings.Contains(joined, `"mode":"automatic"`) {
+	if !strings.Contains(joined, `dns:{"custom":{"ips":["10.0.0.2"]},"mode":"custom"}`) || !strings.Contains(joined, `"mode":"automatic"`) {
 		t.Fatalf("dns puts:\n%s", joined)
 	}
 	out, err = run(t, "doctor")
