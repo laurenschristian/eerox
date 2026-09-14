@@ -7,6 +7,8 @@ All notable changes are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `set` command to toggle network features (WPA3, SQM, band steering, UPnP, IPv6).
+- `profile assign` / `profile unassign` to move a device in or out of a family profile.
 - `dns` command to show and pin the network resolvers (`--set`, `--auto`, `--yes`).
 - `doctor` command: checks config, session and reachability.
 - `rename-batch`: bulk device rename from a `match<TAB>name` file, with `--dry-run`.

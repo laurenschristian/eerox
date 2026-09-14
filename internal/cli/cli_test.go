@@ -31,12 +31,18 @@ var devices = []map[string]any{
 func setup(t *testing.T) (*httptest.Server, *[]string) {
 	t.Helper()
 	var puts []string
+	netWpa3 := false
+	_ = netWpa3
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/2.2/account":
 			ok(w, map[string]any{"name": "L", "networks": map[string]any{"count": 1, "data": []map[string]any{{"url": "/2.2/networks/9", "name": "Home"}}}})
+		case r.URL.Path == "/2.2/networks/9" && r.Method == http.MethodPut:
+			b, _ := io.ReadAll(r.Body)
+			puts = append(puts, "netset:"+string(b))
+			ok(w, nil)
 		case r.URL.Path == "/2.2/networks/9":
-			ok(w, map[string]any{"url": "/2.2/networks/9", "name": "Home", "wan_ip": "1.2.3.4", "health": map[string]any{"internet": map[string]any{"status": "connected", "isp_up": true}, "eero_network": map[string]any{"status": "connected"}}, "eeros": map[string]any{"count": 2}, "dns": map[string]any{"mode": "custom", "caching": true, "custom": map[string]any{"ips": []string{"10.0.4.70", "1.1.1.1"}}}})
+			ok(w, map[string]any{"url": "/2.2/networks/9", "name": "Home", "wan_ip": "1.2.3.4", "wpa3": netWpa3, "sqm": false, "band_steering": true, "upnp": false, "ipv6_upstream": false, "health": map[string]any{"internet": map[string]any{"status": "connected", "isp_up": true}, "eero_network": map[string]any{"status": "connected"}}, "eeros": map[string]any{"count": 2}, "dns": map[string]any{"mode": "custom", "caching": true, "custom": map[string]any{"ips": []string{"10.0.4.70", "1.1.1.1"}}}})
 		case r.URL.Path == "/2.2/networks/9/devices":
 			ok(w, devices)
 		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodGet:
@@ -48,7 +54,7 @@ func setup(t *testing.T) (*httptest.Server, *[]string) {
 		case r.URL.Path == "/2.2/networks/9/eeros":
 			ok(w, []map[string]any{{"url": "/2.2/eeros/e1", "location": "Office", "gateway": true, "model": "Pro 6E", "ip_address": "10.0.0.1", "status": "green", "mesh_quality_bars": 5}})
 		case r.URL.Path == "/2.2/networks/9/profiles":
-			ok(w, []map[string]any{{"url": "/2.2/networks/9/profiles/p1", "name": "Kids", "paused": false}})
+			ok(w, []map[string]any{{"url": "/2.2/networks/9/profiles/p1", "name": "Kids", "paused": false, "devices": []map[string]any{{"url": "/2.2/networks/9/devices/a1"}}}})
 		case r.URL.Path == "/2.2/networks/9/profiles/p1" && r.Method == http.MethodPut:
 			b, _ := io.ReadAll(r.Body)
 			puts = append(puts, "profile:"+string(b))
@@ -263,6 +269,61 @@ func TestDNSAndDoctor(t *testing.T) {
 	}
 }
 
+func TestSetNetwork(t *testing.T) {
+	_, puts := setup(t)
+	out, err := run(t, "set")
+	if err != nil || !strings.Contains(out, "band_steering  on") || !strings.Contains(out, "wpa3           off") {
+		t.Fatalf("set show %v\n%s", err, out)
+	}
+	if _, err := run(t, "set", "--wpa3", "on"); err == nil {
+		t.Fatal("set must require --yes")
+	}
+	if _, err := run(t, "set", "--wpa3", "bogus", "--yes"); err == nil {
+		t.Fatal("invalid on|off must error")
+	}
+	out, err = run(t, "set", "--wpa3", "on", "--sqm", "on", "--yes")
+	if err != nil || !strings.Contains(out, "updated 2 setting(s)") {
+		t.Fatalf("set %v\n%s", err, out)
+	}
+	joined := strings.Join(*puts, "\n")
+	if !strings.Contains(joined, `"wpa3":true`) || !strings.Contains(joined, `"sqm":true`) {
+		t.Fatalf("netset put:\n%s", joined)
+	}
+	out, _ = run(t, "set", "--json")
+	if !strings.Contains(out, `"band_steering": true`) {
+		t.Fatalf("set json\n%s", out)
+	}
+}
+
+func TestProfileAssign(t *testing.T) {
+	_, puts := setup(t)
+	// a1 (nas) is already in Kids; adding again is a no-op.
+	out, err := run(t, "profile", "assign", "Kids", "nas")
+	if err != nil || !strings.Contains(out, "already in Kids") {
+		t.Fatalf("assign dup %v\n%s", err, out)
+	}
+	// b2 (Kids iPad) is not in the profile yet.
+	out, err = run(t, "profile", "assign", "Kids", "Kids iPad")
+	if err != nil || !strings.Contains(out, "assign Kids iPad to Kids") {
+		t.Fatalf("assign %v\n%s", err, out)
+	}
+	out, err = run(t, "profile", "unassign", "Kids", "nas")
+	if err != nil || !strings.Contains(out, "unassign nas from Kids") {
+		t.Fatalf("unassign %v\n%s", err, out)
+	}
+	out, err = run(t, "profile", "unassign", "Kids", "Kids iPad")
+	if err != nil || !strings.Contains(out, "not in Kids") {
+		t.Fatalf("unassign absent %v\n%s", err, out)
+	}
+	if _, err := run(t, "profile", "assign", "Nope", "nas"); err == nil {
+		t.Fatal("bad profile must error")
+	}
+	joined := strings.Join(*puts, "\n")
+	if !strings.Contains(joined, "/2.2/networks/9/devices/b2") {
+		t.Fatalf("assign put:\n%s", joined)
+	}
+}
+
 func TestExport(t *testing.T) {
 	setup(t)
 	out, err := run(t, "export", "--adguard")
@@ -394,7 +455,7 @@ func TestMCPTools(t *testing.T) {
 	}
 	defer func() { _ = sess.Close() }()
 	tools, err := sess.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 19 {
+	if err != nil || len(tools.Tools) != 21 {
 		t.Fatalf("%v tools=%d", err, len(tools.Tools))
 	}
 	call := func(name string, args map[string]any) string {
@@ -428,11 +489,17 @@ func TestMCPTools(t *testing.T) {
 			t.Fatalf("%s: %s", name, out)
 		}
 	}
+	if out := call("eero_set_network", map[string]any{"sqm": true}); strings.HasPrefix(out, "ERR:") {
+		t.Fatalf("set_network %s", out)
+	}
+	if out := call("eero_assign_profile", map[string]any{"profile": "Kids", "device": "Kids iPad", "add": true}); !strings.Contains(out, "ok: Kids") {
+		t.Fatalf("assign_profile %s", out)
+	}
 	if out := call("eero_raw", map[string]any{"path": "networks/9/eeros"}); !strings.Contains(out, "Pro 6E") {
 		t.Fatalf("raw %s", out)
 	}
 	joined := strings.Join(*puts, "\n")
-	for _, w := range []string{`"nickname":"New"`, `"paused":true`, "delete:r1", `"enabled":false`, "reboot:e1"} {
+	for _, w := range []string{`"nickname":"New"`, `"paused":true`, "delete:r1", `"enabled":false`, "reboot:e1", `"sqm":true`} {
 		if !strings.Contains(joined, w) {
 			t.Fatalf("missing %s in\n%s", w, joined)
 		}

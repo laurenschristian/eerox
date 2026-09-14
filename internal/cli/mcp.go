@@ -56,6 +56,18 @@ type guestIn struct {
 	Password string `json:"password,omitempty"`
 	Name     string `json:"name,omitempty"`
 }
+type setNetworkIn struct {
+	Wpa3         *bool `json:"wpa3,omitempty"`
+	SQM          *bool `json:"sqm,omitempty" jsonschema:"smart queue management (bufferbloat control)"`
+	BandSteering *bool `json:"band_steering,omitempty"`
+	Upnp         *bool `json:"upnp,omitempty"`
+	IPv6         *bool `json:"ipv6,omitempty" jsonschema:"IPv6 upstream"`
+}
+type assignIn struct {
+	Profile string `json:"profile" jsonschema:"profile name or id"`
+	Device  string `json:"device" jsonschema:"device id, ip, mac, nickname or hostname"`
+	Add     bool   `json:"add" jsonschema:"true to add to the profile, false to remove"`
+}
 type rawIn struct {
 	Method string `json:"method,omitempty" jsonschema:"HTTP method, default GET"`
 	Path   string `json:"path" jsonschema:"API path, e.g. networks/123/devices"`
@@ -286,6 +298,72 @@ func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *m
 			}
 			st, err := c.SpeedTest(ctx, id)
 			return nil, st, err
+		})
+
+	mcp.AddTool(s, &mcp.Tool{Name: "eero_set_network", Description: "Toggle network features: wpa3, sqm, band_steering, upnp, ipv6. Returns the resulting state. Disruptive: confirm with the user first."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in setNetworkIn) (*mcp.CallToolResult, *eero.Network, error) {
+			id, err := network(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+			fields := map[string]any{}
+			for k, v := range map[string]*bool{"wpa3": in.Wpa3, "sqm": in.SQM, "band_steering": in.BandSteering, "upnp": in.Upnp, "ipv6_upstream": in.IPv6} {
+				if v != nil {
+					fields[k] = *v
+				}
+			}
+			if len(fields) > 0 {
+				if err := c.UpdateNetwork(ctx, id, fields); err != nil {
+					return nil, nil, err
+				}
+			}
+			n, err := c.Network(ctx, id)
+			return nil, n, err
+		})
+
+	mcp.AddTool(s, &mcp.Tool{Name: "eero_assign_profile", Description: "Add (add=true) or remove (add=false) a device from a family profile."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in assignIn) (*mcp.CallToolResult, msgOut, error) {
+			id, err := network(ctx)
+			if err != nil {
+				return nil, msgOut{}, err
+			}
+			ps, err := c.Profiles(ctx, id)
+			if err != nil {
+				return nil, msgOut{}, err
+			}
+			var p *eero.Profile
+			for i := range ps {
+				if ps[i].ID() == in.Profile || equalFold(ps[i].Name, in.Profile) {
+					p = &ps[i]
+				}
+			}
+			if p == nil {
+				return nil, msgOut{}, fmt.Errorf("no profile matches %q", in.Profile)
+			}
+			_, d, err := findDeviceWith(ctx, c, network, in.Device)
+			if err != nil {
+				return nil, msgOut{}, err
+			}
+			urls := p.DeviceURLs()
+			out := urls[:0]
+			has := false
+			for _, u := range urls {
+				if eero.ID(u) == d.ID() {
+					has = true
+					if in.Add {
+						out = append(out, u)
+					}
+					continue
+				}
+				out = append(out, u)
+			}
+			if in.Add && !has {
+				out = append(out, d.URL)
+			}
+			if err := c.SetProfileDevices(ctx, id, p.ID(), out); err != nil {
+				return nil, msgOut{}, err
+			}
+			return nil, msgOut{Message: fmt.Sprintf("ok: %s / %s", p.Name, d.Name())}, nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_raw", Description: "Call any eero API path and return the data payload."},

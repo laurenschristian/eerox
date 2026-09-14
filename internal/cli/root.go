@@ -66,7 +66,7 @@ func Root() *cobra.Command {
 
 	root.AddCommand(
 		loginCmd(), logoutCmd(), accountCmd(), networksCmd(), networkCmd(), statusCmd(),
-		devicesCmd(), deviceCmd(), eerosCmd(), rebootCmd(), profilesCmd(), profileCmd(), dnsCmd(), doctorCmd(),
+		devicesCmd(), deviceCmd(), eerosCmd(), rebootCmd(), profilesCmd(), profileCmd(), dnsCmd(), setCmd(), doctorCmd(),
 		reservationsCmd(), forwardsCmd(), guestCmd(), speedtestCmd(), exportCmd(), renameBatchCmd(), rawCmd(), mcpCmd(),
 	)
 	return root
@@ -618,20 +618,81 @@ func profileCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				ps, err := client.Profiles(ctx, id)
+				p, err := findProfile(ctx, id, args[0])
 				if err != nil {
 					return err
 				}
-				for _, p := range ps {
-					if p.ID() == args[0] || strings.EqualFold(p.Name, args[0]) {
-						return client.UpdateProfile(ctx, id, p.ID(), map[string]any{"paused": x.val})
-					}
-				}
-				return fmt.Errorf("no profile matches %q", args[0])
+				return client.UpdateProfile(ctx, id, p.ID(), map[string]any{"paused": x.val})
 			},
 		})
 	}
+	c.AddCommand(profileAssignCmd("assign", true), profileAssignCmd("unassign", false))
 	return c
+}
+
+func findProfile(ctx context.Context, id, q string) (*eero.Profile, error) {
+	ps, err := client.Profiles(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for i := range ps {
+		if ps[i].ID() == q || strings.EqualFold(ps[i].Name, q) {
+			return &ps[i], nil
+		}
+	}
+	return nil, fmt.Errorf("no profile matches %q", q)
+}
+
+// profileAssignCmd adds (assign) or removes (unassign) a device from a profile.
+func profileAssignCmd(name string, add bool) *cobra.Command {
+	return &cobra.Command{
+		Use: name + " <profile> <device>", Args: cobra.ExactArgs(2),
+		Short: name + " a device " + map[bool]string{true: "to", false: "from"}[add] + " a profile",
+		RunE: func(_ *cobra.Command, args []string) error {
+			ctx, cancel := ctx()
+			defer cancel()
+			id, err := netID(ctx)
+			if err != nil {
+				return err
+			}
+			p, err := findProfile(ctx, id, args[0])
+			if err != nil {
+				return err
+			}
+			_, d, err := findDevice(ctx, args[1])
+			if err != nil {
+				return err
+			}
+			urls := p.DeviceURLs()
+			has := false
+			out := urls[:0]
+			for _, u := range urls {
+				if eero.ID(u) == d.ID() {
+					has = true
+					if add {
+						out = append(out, u)
+					}
+					continue
+				}
+				out = append(out, u)
+			}
+			switch {
+			case add && !has:
+				out = append(out, d.URL)
+			case add && has:
+				fmt.Printf("%s already in %s\n", d.Name(), p.Name)
+				return nil
+			case !add && !has:
+				fmt.Printf("%s not in %s\n", d.Name(), p.Name)
+				return nil
+			}
+			if err := client.SetProfileDevices(ctx, id, p.ID(), out); err != nil {
+				return err
+			}
+			fmt.Printf("%s %s %s %s\n", name, d.Name(), map[bool]string{true: "to", false: "from"}[add], p.Name)
+			return nil
+		},
+	}
 }
 
 func reservationsCmd() *cobra.Command {
