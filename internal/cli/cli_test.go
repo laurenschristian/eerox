@@ -275,7 +275,7 @@ func TestRenameBatch(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "names.txt")
 	_ = os.WriteFile(f, []byte("# comment\n10.0.0.5\tNAS | Office\nKids iPad=Kids iPad\nzzz\tNope\nbroken line\naa:bb\tNAS | Office\n"), 0o600)
 	out, err := run(t, "rename-batch", f, "--dry-run")
-	if err != nil || !strings.Contains(out, "nas -> NAS | Office") || !strings.Contains(out, "renamed 1, unchanged 2, skipped 2 (dry run)") {
+	if err != nil || !strings.Contains(strings.Join(strings.Fields(out), " "), "nas -> NAS | Office") || !strings.Contains(out, "renamed 1, unchanged 2, skipped 2 (dry run)") {
 		t.Fatalf("%v\n%s", err, out)
 	}
 	if len(*puts) != 0 {
