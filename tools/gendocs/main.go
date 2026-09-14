@@ -16,10 +16,10 @@ import (
 func main() {
 	root := cli.Root()
 	root.DisableAutoGenTag = true
-	if err := os.MkdirAll("man", 0o755); err != nil {
+	if err := os.MkdirAll("man", 0o750); err != nil {
 		log.Fatal(err)
 	}
-	if err := os.MkdirAll("docs/cli", 0o755); err != nil {
+	if err := os.MkdirAll("docs/cli", 0o750); err != nil {
 		log.Fatal(err)
 	}
 	hdr := &doc.GenManHeader{Title: "EEROX", Section: "1", Date: &time.Time{}, Source: "eerox", Manual: "eerox manual"}
