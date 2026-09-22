@@ -50,3 +50,11 @@ homebrew_casks:
       bash: "completions/eerox.bash"
       zsh: "completions/_eerox"
       fish: "completions/eerox.fish"
+    hooks:
+      post:
+        # Strip the quarantine xattr so the unsigned binary runs without a
+        # Gatekeeper prompt (goreleaser no longer emits this by default).
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/eerox"]
+          end
