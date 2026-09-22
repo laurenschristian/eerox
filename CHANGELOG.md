@@ -6,6 +6,18 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-22
+
+### Fixed
+- The Homebrew cask lost its quarantine-strip hook. goreleaser no longer emits it
+  by default, and `.goreleaser.yaml` never carried one, so the next release would
+  have published a cask whose unsigned binary macOS blocks on install: the `eerox`
+  symlink dangles and the command fails with "no such file or directory". The
+  published 0.2.0 cask only works because the hook was hand-edited into the tap,
+  and that edit also gated it on `Hardware::CPU.arm?`, leaving Intel Macs broken.
+  The hook is now in the config, unconditional on macOS, so releases carry it.
+
+
 ### Added
 - `set` command to toggle network features (WPA3, SQM, band steering, UPnP, IPv6).
 - `profile assign` / `profile unassign` to move a device in or out of a family profile.
