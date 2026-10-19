@@ -79,6 +79,21 @@ type rawOut struct {
 type msgOut struct {
 	Message string `json:"message"`
 }
+type devicesOut struct {
+	Devices []eero.Device `json:"devices"`
+}
+type eerosOut struct {
+	Eeros []eero.Eero `json:"eeros"`
+}
+type profilesOut struct {
+	Profiles []eero.Profile `json:"profiles"`
+}
+type reservationsOut struct {
+	Reservations []eero.Reservation `json:"reservations"`
+}
+type forwardsOut struct {
+	Forwards []eero.Forward `json:"forwards"`
+}
 
 func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "eerox", Version: Version}, nil)
@@ -100,14 +115,14 @@ func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *m
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_devices", Description: "Client devices with name, ip, mac, node, connection state, profile. Filter by search or online."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in filterIn) (*mcp.CallToolResult, []eero.Device, error) {
+		func(ctx context.Context, _ *mcp.CallToolRequest, in filterIn) (*mcp.CallToolResult, devicesOut, error) {
 			id, err := network(ctx)
 			if err != nil {
-				return nil, nil, err
+				return nil, devicesOut{}, err
 			}
 			devs, err := c.Devices(ctx, id)
 			if err != nil {
-				return nil, nil, err
+				return nil, devicesOut{}, err
 			}
 			f := deviceFilter{search: in.Search}
 			if in.Online != nil {
@@ -120,7 +135,7 @@ func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *m
 				}
 			}
 			sortDevices(out)
-			return nil, out, nil
+			return nil, devicesOut{Devices: out}, nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_device", Description: "Full detail for one device incl. signal, usage and node."},
@@ -149,13 +164,13 @@ func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *m
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_eeros", Description: "Mesh nodes: location, model, ip, status, mesh quality, client count, firmware."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, []eero.Eero, error) {
+		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, eerosOut, error) {
 			id, err := network(ctx)
 			if err != nil {
-				return nil, nil, err
+				return nil, eerosOut{}, err
 			}
 			e, err := c.Eeros(ctx, id)
-			return nil, e, err
+			return nil, eerosOut{Eeros: e}, err
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_reboot", Description: "Reboot one eero by id or location, or the whole network when eero is empty. Disruptive: confirm with the user first."},
@@ -180,13 +195,13 @@ func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *m
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_profiles", Description: "Family profiles with paused state and member devices."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, []eero.Profile, error) {
+		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, profilesOut, error) {
 			id, err := network(ctx)
 			if err != nil {
-				return nil, nil, err
+				return nil, profilesOut{}, err
 			}
 			p, err := c.Profiles(ctx, id)
-			return nil, p, err
+			return nil, profilesOut{Profiles: p}, err
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_pause_profile", Description: "Pause or resume every device in a profile."},
@@ -208,13 +223,13 @@ func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *m
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_reservations", Description: "DHCP reservations (ip, mac, description)."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, []eero.Reservation, error) {
+		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, reservationsOut, error) {
 			id, err := network(ctx)
 			if err != nil {
-				return nil, nil, err
+				return nil, reservationsOut{}, err
 			}
 			r, err := c.Reservations(ctx, id)
-			return nil, r, err
+			return nil, reservationsOut{Reservations: r}, err
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_add_reservation", Description: "Reserve an IP for a MAC address."},
@@ -246,13 +261,13 @@ func mcpServer(c *eero.Client, network func(context.Context) (string, error)) *m
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_forwards", Description: "Port forwarding rules."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, []eero.Forward, error) {
+		func(ctx context.Context, _ *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, forwardsOut, error) {
 			id, err := network(ctx)
 			if err != nil {
-				return nil, nil, err
+				return nil, forwardsOut{}, err
 			}
 			f, err := c.Forwards(ctx, id)
-			return nil, f, err
+			return nil, forwardsOut{Forwards: f}, err
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "eero_guest_network", Description: "Guest wifi state: name, enabled, password."},

@@ -6,6 +6,11 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- MCP list tools (`eero_devices`, `eero_eeros`, `eero_profiles`, `eero_reservations`,
+  `eero_forwards`) return an object with a named list instead of a bare array, as MCP structured
+  output requires. This changes the tool output shape; CLI `--json` is unchanged.
+
 ## [0.2.1] - 2026-09-22
 
 ### Fixed
