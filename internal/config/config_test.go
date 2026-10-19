@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,7 @@ func TestSaveLoadAndEnv(t *testing.T) {
 		t.Fatalf("%v %+v", err, c)
 	}
 	st, _ := os.Stat(p)
-	if st.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && st.Mode().Perm() != 0o600 { // Windows has no Unix file modes
 		t.Fatalf("mode %v", st.Mode())
 	}
 	t.Setenv("EERO_TOKEN", "envtok")

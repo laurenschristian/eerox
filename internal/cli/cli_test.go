@@ -31,6 +31,11 @@ var devices = []map[string]any{
 func setup(t *testing.T) (*httptest.Server, *[]string) {
 	t.Helper()
 	var puts []string
+	b2 := map[string]any{}
+	for k, v := range devices[1] {
+		b2[k] = v
+	}
+	p1 := map[string]any{"url": "/2.2/networks/9/profiles/p1", "name": "Kids", "paused": false, "devices": []map[string]any{{"url": "/2.2/networks/9/devices/a1"}}}
 	netWpa3 := false
 	_ = netWpa3
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,18 +51,39 @@ func setup(t *testing.T) (*httptest.Server, *[]string) {
 		case r.URL.Path == "/2.2/networks/9/devices":
 			ok(w, devices)
 		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodGet:
-			ok(w, devices[1])
-		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodPut:
+			ok(w, b2)
+		case r.URL.Path == "/2.3/networks/9/devices/b2" && r.Method == http.MethodPut:
 			b, _ := io.ReadAll(r.Body)
 			puts = append(puts, string(b))
+			var in map[string]any
+			_ = json.Unmarshal(b, &in)
+			for k, v := range in {
+				b2[k] = v
+			}
+			ok(w, nil)
+		case r.URL.Path == "/2.2/networks/9/blacklist" && r.Method == http.MethodPost:
+			_ = r.ParseForm()
+			puts = append(puts, "blacklist:"+r.PostForm.Get("mac"))
+			b2["blacklisted"] = true
+			ok(w, nil)
+		case r.URL.Path == "/2.2/networks/9/blacklist/cc:dd" && r.Method == http.MethodDelete:
+			puts = append(puts, "unblacklist:cc:dd")
+			b2["blacklisted"] = false
 			ok(w, nil)
 		case r.URL.Path == "/2.2/networks/9/eeros":
 			ok(w, []map[string]any{{"url": "/2.2/eeros/e1", "location": "Office", "gateway": true, "model": "Pro 6E", "ip_address": "10.0.0.1", "status": "green", "mesh_quality_bars": 5}})
 		case r.URL.Path == "/2.2/networks/9/profiles":
 			ok(w, []map[string]any{{"url": "/2.2/networks/9/profiles/p1", "name": "Kids", "paused": false, "devices": []map[string]any{{"url": "/2.2/networks/9/devices/a1"}}}})
+		case r.URL.Path == "/2.2/networks/9/profiles/p1" && r.Method == http.MethodGet:
+			ok(w, p1)
 		case r.URL.Path == "/2.2/networks/9/profiles/p1" && r.Method == http.MethodPut:
 			b, _ := io.ReadAll(r.Body)
 			puts = append(puts, "profile:"+string(b))
+			var in map[string]any
+			_ = json.Unmarshal(b, &in)
+			for k, v := range in {
+				p1[k] = v
+			}
 			ok(w, nil)
 		case r.URL.Path == "/2.2/networks/9/reservations":
 			ok(w, []map[string]any{{"url": "/2.2/networks/9/reservations/r1", "ip": "10.0.0.5", "mac": "aa:bb", "description": "nas"}})
@@ -104,13 +130,19 @@ func run(t *testing.T, args ...string) (string, error) {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	// Drain concurrently: output larger than the pipe buffer (completion scripts on Windows) would block Execute.
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(&buf, r)
+		close(done)
+	}()
 	root := Root()
 	root.SetArgs(args)
 	err := root.Execute()
 	_ = w.Close()
 	os.Stdout = old
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
+	<-done
 	return buf.String(), err
 }
 
@@ -173,14 +205,14 @@ func TestDeviceMutations(t *testing.T) {
 			t.Fatalf("%v: %v\n%s", args, err, out)
 		}
 	}
-	want := []string{`{"nickname":"Ipad Mini"}`, `{"paused":true}`, `{"paused":false}`, `{"blacklisted":true}`, `{"blacklisted":false}`}
+	want := []string{`{"nickname":"Ipad Mini"}`, `{"paused":true}`, `{"paused":false}`, `blacklist:cc:dd`, `unblacklist:cc:dd`}
 	for i, w := range want {
 		if strings.TrimSpace((*puts)[i]) != w {
 			t.Fatalf("put %d = %s want %s", i, (*puts)[i], w)
 		}
 	}
 	out, err := run(t, "device", "b2")
-	if err != nil || !strings.Contains(out, "Kids iPad") || !strings.Contains(out, "paused") {
+	if err != nil || !strings.Contains(out, "Ipad Mini") || !strings.Contains(out, "online") {
 		t.Fatalf("%v\n%s", err, out)
 	}
 	if _, err := run(t, "device", "nothing"); err == nil {

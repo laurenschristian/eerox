@@ -6,6 +6,18 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- `device pause`/`unpause`/`rename` never took effect: the cloud API acknowledges writes to the 2.2 device
+  endpoint and drops them. Device writes now go to 2.3.
+- `device block`/`unblock` never took effect: blocking is the form-encoded `networks/{id}/blacklist`
+  resource, not a `blacklisted` field on the device.
+- Device writes now read the device back and fail with an error if the change did not apply, instead of
+  printing `ok`.
+- `profile pause`/`unpause`/`assign`/`unassign` now read the profile back and fail if the change did not
+  apply, sharing the same check as device writes.
+- Tests no longer deadlock on Windows (completion output filled the stdout pipe) and skip the Unix
+  file-mode assertion there.
+
 ## [0.2.1] - 2026-09-22
 
 ### Fixed

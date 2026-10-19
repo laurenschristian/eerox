@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -26,6 +27,8 @@ type Client struct {
 	Token   string
 	OnToken func(string) error
 	http    *http.Client
+
+	pollEvery time.Duration // read-back interval after device writes; zero means one second
 }
 
 func New(base, token string) *Client {
@@ -67,7 +70,12 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 // doRaw performs one request; on a stale session it refreshes once and retries.
 func (c *Client) doRaw(ctx context.Context, method, path string, body any, retry bool) (json.RawMessage, error) {
 	var rd io.Reader
-	if body != nil {
+	contentType := "application/json"
+	switch v := body.(type) {
+	case nil:
+	case url.Values:
+		rd, contentType = strings.NewReader(v.Encode()), "application/x-www-form-urlencoded"
+	default:
 		b, err := json.Marshal(body)
 		if err != nil {
 			return nil, err
@@ -84,7 +92,7 @@ func (c *Client) doRaw(ctx context.Context, method, path string, body any, retry
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", contentType)
 	}
 	if c.Token != "" {
 		req.Header.Set("Cookie", "s="+c.Token)
