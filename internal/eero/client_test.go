@@ -132,7 +132,7 @@ func TestDevicesAndMutations(t *testing.T) {
 				{"url": "/2.2/networks/9/devices/a1", "mac": "aa:bb", "ip": "10.0.0.5", "hostname": "nas", "connected": true},
 				{"url": "/2.2/networks/9/devices/b2", "mac": "cc:dd", "ip": "10.0.0.6", "nickname": "Kids iPad", "connected": false},
 			})
-		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodPut:
+		case r.URL.Path == "/2.3/networks/9/devices/b2" && r.Method == http.MethodPut:
 			_ = json.NewDecoder(r.Body).Decode(&put)
 			ok(w, nil)
 		case r.URL.Path == "/2.2/networks/9/reservations" && r.Method == http.MethodPost:

@@ -47,7 +47,7 @@ func setup(t *testing.T) (*httptest.Server, *[]string) {
 			ok(w, devices)
 		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodGet:
 			ok(w, devices[1])
-		case r.URL.Path == "/2.2/networks/9/devices/b2" && r.Method == http.MethodPut:
+		case r.URL.Path == "/2.3/networks/9/devices/b2" && r.Method == http.MethodPut:
 			b, _ := io.ReadAll(r.Body)
 			puts = append(puts, string(b))
 			ok(w, nil)
