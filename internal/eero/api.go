@@ -307,8 +307,11 @@ func (c *Client) Device(ctx context.Context, id, dev string) (*Device, error) {
 	return &d, c.do(ctx, "GET", net(id)+"/devices/"+dev, nil, &d)
 }
 
+// UpdateDevice PUTs device fields (paused, nickname, blacklisted). Device writes
+// must go to API version 2.3: the default 2.2 endpoint answers 200 and silently
+// drops them (observed live 2026-11-21; same pin in eero-api and schmittx/home-assistant-eero).
 func (c *Client) UpdateDevice(ctx context.Context, id, dev string, fields map[string]any) error {
-	return c.do(ctx, "PUT", net(id)+"/devices/"+dev, fields, nil)
+	return c.do(ctx, "PUT", "/2.3/"+net(id)+"/devices/"+dev, fields, nil)
 }
 
 func (c *Client) Eeros(ctx context.Context, id string) ([]Eero, error) {

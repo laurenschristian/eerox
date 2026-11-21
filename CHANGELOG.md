@@ -6,6 +6,13 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- `device pause` / `unpause` (and the `eero_pause_device` MCP tool) printed `ok` but
+  changed nothing: the API version 2.2 device endpoint answers 200 and silently drops
+  the write. Every device write (`pause`, `block`, `rename`, `rename-batch` and the
+  matching MCP tools) now goes to `/2.3/networks/{id}/devices/{id}`, where a pause
+  takes effect within seconds. Verified live for pause and unpause only.
+
 ## [0.2.1] - 2026-09-22
 
 ### Fixed
